@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <nav class="topnav">
+        <div class="container nav-inner">
+            <div class="brand"></div>
+            <div class="nav-pill">
+                <a href="#about">About</a>
+                <a href="#projects">Projects</a>
+                <a href="#skills">Skills</a>
+                <a href="#experience">Experience</a>
+            </div>
+            <a class="" href="{{ profile['website'] or '#' }}"></a>
+        </div>
+    </nav>
+    <header class="hero dark">
+        <div class="container hero-grid">
+            <div>
+                <div class="pretitle">{{ profile['name'] or 'Zaid' }}</div>
+                <p class="subtitle">{{ profile['tagline'] or 'Full Stack Developer' }}</p>
+                <h1 class="display">Hello, I'm {{ profile['name'] or 'Zaid' }}</h1>
+                <p class="lead">building products that dont suck</p>
+                
+                
+            </div>
+            <div class="avatar-wrap">
+                {% if profile['avatar_path'] %}
+                    <img class="avatar hero-avatar" src="{{ url_for('static', filename=profile['avatar_path']|replace('\\', '/')) }}" alt="avatar">
+                {% else %}
+                    <div class="avatar hero-avatar placeholder">
+                        {% if profile['name'] %}{{ profile['name'][0] }}{% else %}U{% endif %}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="about" class="card about">
+            <h2 class="underline">About</h2>
+            <p class="muted">{{ profile['about'] or 'Share your story, skills, and goals.' }}</p>
+        </section>
+
+        <section id="skills" class="card skills">
+            <h2 class="underline">Skills</h2>
+            <div class="pill-row">
+                {% set ns = namespace(shown=false) %}
+                {% for s in skills %}
+                    {% if s['exploring'] == 0 %}
+                        <span class="pill">{{ s['name'] }}</span>
+                        {% set ns.shown = true %}
+                    {% endif %}
+                {% endfor %}
+                {% if not ns.shown %}
+                    <span class="muted">No skills yet.</span>
+                {% endif %}
+            </div>
+            <h3 class="subhead">Currently exploring</h3>
+            <div class="pill-row">
+                {% set ns2 = namespace(shown=false) %}
+                {% for s in skills %}
+                    {% if s['exploring'] == 1 %}
+                        <span class="pill">{{ s['name'] }}</span>
+                        {% set ns2.shown = true %}
+                    {% endif %}
+                {% endfor %}
+                {% if not ns2.shown %}
+                    <span class="muted">Add technologies you’re exploring.</span>
+                {% endif %}
+            </div>
+        </section>
+
+        <section id="projects" class="card projects">
+            <h2 class="underline">Projects</h2>
+            <div class="grid">
+                {% for p in projects %}
+                    <article class="project">
+                        {% if p['image_path'] %}
+                        <img src="{{ url_for('static', filename=p['image_path']) }}" alt="{{ p['title'] }}">
+                        {% endif %}
+                        <div class="content">
+                            <h3>{{ p['title'] }}</h3>
+                            <p>{{ p['description'] }}</p>
+                            {% if p['link'] %}
+                            <a class="button" href="{{ p['link'] }}" target="_blank">View</a>
+                            {% endif %}
+                        </div>
+                    </article>
+                {% else %}
+                    <p class="muted">No projects yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section id="experience" class="card experience">
+            <h2 class="underline">Experience</h2>
+            <ul class="timeline">
+                {% for e in experience %}
+                <li>
+                    <div class="row">
+                        <strong>{{ e['role'] }}</strong>
+                        <span class="company">{{ e['company'] }}</span>
+                        <span class="dates">{{ e['start_date'] }}{% if e['end_date'] %} → {{ e['end_date'] }}{% endif %}</span>
+                    </div>
+                    <p>{{ e['description'] }}</p>
+                </li>
+                {% else %}
+                <p class="muted">No experience added yet.</p>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="card chat">
+            <h2 class="underline">Ask My PDF</h2>
+            {% if has_kb %}
+            <div class="chat-box">
+                <div id="chat-log" class="chat-log"></div>
+                <div class="chat-input">
+                    <input id="question" type="text" placeholder="Type a question...">
+                    <button id="send">Ask</button>
+                </div>
+            </div>
+            {% else %}
+            <p class="muted">Knowledge base not set. Admin can upload a PDF.</p>
+            {% endif %}
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="container">© {{ 2025 }} • Built with love</div>
+    </footer>
+
+    <div class="social-dock">
+        <a href="{{ url_for('index') }}" aria-label="Home">
+            <svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v11a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5H9v5a1 1 0 0 1-1 1H3z" fill="currentColor"/></svg>
+        </a>
+        <span class="divider"></span>
+        {% if profile['github'] %}
+        <a href="{{ profile['github'] }}" target="_blank" aria-label="GitHub">
+            <svg viewBox="0 0 24 24"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.11.79-.25.79-.55v-2.15c-3.22.7-3.9-1.39-3.9-1.39-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.04 1.78 2.74 1.26 3.4.96.11-.76.41-1.26.74-1.55-2.57-.29-5.27-1.29-5.27-5.76 0-1.27.46-2.31 1.21-3.13-.12-.3-.53-1.52.11-3.17 0 0 1-.32 3.28 1.19a11.4 11.4 0 0 1 5.97 0c2.28-1.51 3.28-1.19 3.28-1.19.64 1.65.23 2.87.11 3.17.75.82 1.21 1.86 1.21 3.13 0 4.48-2.71 5.46-5.29 5.75.42.37.79 1.1.79 2.23v3.31c0 .3.21.67.8.55A11.5 11.5 0 0 0 12 .5z" fill="currentColor"/></svg>
+        </a>
+        {% endif %}
+        {% if profile['linkedin'] %}
+        <span class="divider"></span>
+        <a href="{{ profile['linkedin'] }}" target="_blank" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24"><path d="M4.98 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM3 8.98h4v12H3zM9.5 8.98h3.83v1.64h.05c.53-.95 1.82-1.95 3.75-1.95 4 0 4.74 2.63 4.74 6.05v6.26h-4v-5.55c0-1.32-.02-3.02-1.84-3.02-1.84 0-2.12 1.44-2.12 2.93v5.64h-4v-12z" fill="currentColor"/></svg>
+        </a>
+        {% endif %}
+        {% if profile['twitter'] %}
+        <span class="divider"></span>
+        <a href="{{ profile['twitter'] }}" target="_blank" aria-label="X">
+            <svg viewBox="0 0 24 24"><path d="M17.7 3H21l-7.5 8.6L21.8 21h-3.3L13 13.7 8 21H3.8l7.9-9.2L4.3 3h3.3l4.6 6.7z" fill="currentColor"/></svg>
+        </a>
+        {% endif %}
+        {% if profile['website'] %}
+        <span class="divider"></span>
+        <a href="{{ profile['website'] }}" target="_blank" aria-label="Website">
+            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2c1.7 0 3.26.52 4.56 1.41L9.41 12 12 14.59 18.59 8A8 8 0 1 1 12 4z" fill="currentColor"/></svg>
+        </a>
+        {% endif %}
+    </div>
+
+    <script>
+    const logEl = document.getElementById('chat-log');
+    const inputEl = document.getElementById('question');
+    const sendEl = document.getElementById('send');
+    function addMsg(who, text) {
+        const d = document.createElement('div');
+        d.className = who;
+        d.textContent = text;
+        logEl.appendChild(d);
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+    if (sendEl) {
+        sendEl.addEventListener('click', async () => {
+            const q = (inputEl.value || '').trim();
+            if (!q) return;
+            addMsg('user', q);
+            inputEl.value = '';
+            const r = await fetch("{{ url_for('api_chat') }}", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) });
+            const j = await r.json();
+            addMsg('bot', j.answer);
+        });
+        inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') sendEl.click(); });
+    }
+    </script>
+</body>
+</html>

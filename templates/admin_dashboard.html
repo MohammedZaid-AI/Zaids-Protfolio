@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header class="admin-header">
+        <div class="container">
+            <h1>Admin</h1>
+            <nav>
+                <a href="{{ url_for('index') }}">View site</a>
+                <a href="{{ url_for('admin_logout') }}">Logout</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        <section class="card">
+            <h2>Profile</h2>
+            <form method="post" action="{{ url_for('admin_profile') }}" enctype="multipart/form-data">
+                <div class="grid-2">
+                    <div>
+                        <label>Name</label>
+                        <input type="text" name="name" value="{{ profile['name'] }}">
+                    </div>
+                    <div>
+                        <label>Tagline</label>
+                        <input type="text" name="tagline" value="{{ profile['tagline'] }}">
+                    </div>
+                </div>
+                <label>About</label>
+                <textarea name="about" rows="4">{{ profile['about'] }}</textarea>
+                <div class="grid-2">
+                    <div>
+                        <label>Avatar</label>
+                        <input type="file" name="avatar" accept="image/*">
+                    </div>
+                    <div>
+                        {% if profile['avatar_path'] %}
+                        <img class="avatar small" src="{{ url_for('static', filename=profile['avatar_path']|replace('\\', '/')) }}" alt="avatar">
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div>
+                        <label>GitHub</label>
+                        <input type="url" name="github" value="{{ profile['github'] }}">
+                    </div>
+                    <div>
+                        <label>Twitter</label>
+                        <input type="url" name="twitter" value="{{ profile['twitter'] }}">
+                    </div>
+                    <div>
+                        <label>LinkedIn</label>
+                        <input type="url" name="linkedin" value="{{ profile['linkedin'] }}">
+                    </div>
+                    <div>
+                        <label>Website</label>
+                        <input type="url" name="website" value="{{ profile['website'] }}">
+                    </div>
+                </div>
+                <button type="submit">Save Profile</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Skills</h2>
+            <form method="post" action="{{ url_for('admin_skills_add') }}" class="inline">
+                <input type="text" name="name" placeholder="e.g. TypeScript">
+                <label class="inline-check"><input type="checkbox" name="exploring"> Currently exploring</label>
+                <button type="submit">Add</button>
+            </form>
+            <div class="pill-row">
+                {% for s in skills %}
+                    <span class="pill">{{ s['name'] }}{% if s['exploring'] %} • exploring{% endif %}</span>
+                    <form method="post" action="{{ url_for('admin_skills_delete', sid=s['id']) }}" class="inline">
+                        <button type="submit" class="danger">Delete</button>
+                    </form>
+                {% else %}
+                    <span class="muted">Add your skills.</span>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Knowledge PDF</h2>
+            {% if knowledge_pdf_path %}
+            <p>Current: {{ knowledge_pdf_path }}</p>
+            {% else %}
+            <p class="muted">No PDF uploaded.</p>
+            {% endif %}
+            <form method="post" action="{{ url_for('admin_knowledge') }}" enctype="multipart/form-data">
+                <input type="file" name="pdf" accept="application/pdf" required>
+                <button type="submit">Upload PDF</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Add Project</h2>
+            <form method="post" action="{{ url_for('admin_projects_add') }}" enctype="multipart/form-data">
+                <label>Title</label>
+                <input type="text" name="title" required>
+                <label>Description</label>
+                <textarea name="description" rows="3"></textarea>
+                <label>Link</label>
+                <input type="url" name="link">
+                <label>Image</label>
+                <input type="file" name="image" accept="image/*">
+                <button type="submit">Add Project</button>
+            </form>
+            <div class="grid">
+                {% for p in projects %}
+                <article class="project">
+                    {% if p['image_path'] %}
+                    <img src="{{ url_for('static', filename=p['image_path']) }}" alt="{{ p['title'] }}">
+                    {% endif %}
+                    <div class="content">
+                        <h3>{{ p['title'] }}</h3>
+                        <p>{{ p['description'] }}</p>
+                        <form method="post" action="{{ url_for('admin_projects_delete', pid=p['id']) }}">
+                            <button type="submit" class="danger">Delete</button>
+                        </form>
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Add Experience</h2>
+            <form method="post" action="{{ url_for('admin_experience_add') }}">
+                <div class="grid-2">
+                    <div>
+                        <label>Role</label>
+                        <input type="text" name="role" required>
+                    </div>
+                    <div>
+                        <label>Company</label>
+                        <input type="text" name="company" required>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div>
+                        <label>Start Date</label>
+                        <input type="text" name="start_date" placeholder="YYYY-MM">
+                    </div>
+                    <div>
+                        <label>End Date</label>
+                        <input type="text" name="end_date" placeholder="YYYY-MM or Present">
+                    </div>
+                </div>
+                <label>Description</label>
+                <textarea name="description" rows="3"></textarea>
+                <button type="submit">Add Experience</button>
+            </form>
+            <ul class="timeline">
+                {% for e in experience %}
+                <li>
+                    <div class="row">
+                        <strong>{{ e['role'] }}</strong>
+                        <span class="company">{{ e['company'] }}</span>
+                        <span class="dates">{{ e['start_date'] }}{% if e['end_date'] %} → {{ e['end_date'] }}{% endif %}</span>
+                    </div>
+                    <p>{{ e['description'] }}</p>
+                    <form method="post" action="{{ url_for('admin_experience_delete', eid=e['id']) }}">
+                        <button type="submit" class="danger">Delete</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+    </main>
+</body>
+</html>
