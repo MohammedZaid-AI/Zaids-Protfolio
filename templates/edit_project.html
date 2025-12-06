@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Project</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <header class="admin-header">
+        <div class="container">
+            <h1>Edit Project</h1>
+            <nav>
+                <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container narrow">
+        <section class="card">
+            <form method="post" enctype="multipart/form-data">
+                <label>Title</label>
+                <input type="text" name="title" value="{{ project['title'] }}" required>
+                <label>Description</label>
+                <textarea name="description" rows="3">{{ project['description'] }}</textarea>
+                <label>Link</label>
+                <input type="url" name="link" value="{{ project['link'] }}">
+                <label>GitHub Link</label>
+                <input type="url" name="github_link" value="{{ project['github_link'] }}">
+                <label>Image (Leave empty to keep current)</label>
+                <input type="file" name="image" accept="image/*">
+                {% if project['image_path'] %}
+                <p class="muted" style="font-size: 0.9em; margin-top: 4px;">Current: {{ project['image_path'] }}</p>
+                {% endif %}
+                <button type="submit" style="margin-top: 16px;">Save Changes</button>
+            </form>
+        </section>
+    </main>
+</body>
+
+</html>

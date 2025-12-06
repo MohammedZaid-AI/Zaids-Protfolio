@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,17 +8,18 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+
 <body>
     <nav class="topnav">
         <div class="container nav-inner">
-            <div class="brand"></div>
+
             <div class="nav-pill">
                 <a href="#about">About</a>
                 <a href="#projects">Projects</a>
                 <a href="#skills">Skills</a>
                 <a href="#experience">Experience</a>
             </div>
-            <a class="" href="{{ profile['website'] or '#' }}"></a>
+
         </div>
     </nav>
     <header class="hero dark">
@@ -27,18 +29,78 @@
                 <p class="subtitle">{{ profile['tagline'] or 'Full Stack Developer' }}</p>
                 <h1 class="display">Hello, I'm {{ profile['name'] or 'Zaid' }}</h1>
                 <p class="lead">building products that dont suck</p>
-                
-                
+
+
             </div>
-            <div class="avatar-wrap">
-                {% if profile['avatar_path'] %}
-                    <img class="avatar hero-avatar" src="{{ url_for('static', filename=profile['avatar_path']|replace('\\', '/')) }}" alt="avatar">
-                {% else %}
-                    <div class="avatar hero-avatar placeholder">
-                        {% if profile['name'] %}{{ profile['name'][0] }}{% else %}U{% endif %}
+            <div class="avatar-wrap" onclick="this.classList.toggle('flipped')">
+                <div class="flipper">
+                    <div class="front">
+                        {% if profile['avatar_path'] %}
+                        <img class="avatar hero-avatar"
+                            src="{{ url_for('static', filename=profile['avatar_path']|replace('\\', '/')) }}"
+                            alt="avatar">
+                        {% else %}
+                        <div class="avatar hero-avatar placeholder">
+                            {% if profile['name'] %}{{ profile['name'][0] }}{% else %}U{% endif %}
+                        </div>
+                        {% endif %}
                     </div>
-                {% endif %}
+                    <div class="back">
+                        {% if profile['avatar_back_path'] %}
+                        <img class="avatar hero-avatar"
+                            src="{{ url_for('static', filename=profile['avatar_back_path']|replace('\\', '/')) }}"
+                            alt="avatar">
+                        {% else %}
+                        <div class="avatar hero-avatar placeholder">
+                            {% if profile['name'] %}{{ profile['name'][0] }}{% else %}U{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
             </div>
+            <style>
+                .avatar-wrap {
+                    perspective: 1000px;
+                    cursor: pointer;
+                }
+
+                .flipper {
+                    transition: 0.6s;
+                    transform-style: preserve-3d;
+                    position: relative;
+                    width: 220px;
+                    height: 220px;
+                }
+
+                .avatar-wrap.flipped .flipper {
+                    transform: rotateY(180deg);
+                }
+
+                .front,
+                .back {
+                    backface-visibility: hidden;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                }
+
+                .front {
+                    z-index: 2;
+                    transform: rotateY(0deg);
+                }
+
+                .back {
+                    transform: rotateY(180deg);
+                }
+
+                /* Ensure images fit the container */
+                .flipper .avatar {
+                    width: 100%;
+                    height: 100%;
+                }
+            </style>
         </div>
     </header>
 
@@ -53,26 +115,26 @@
             <div class="pill-row">
                 {% set ns = namespace(shown=false) %}
                 {% for s in skills %}
-                    {% if s['exploring'] == 0 %}
-                        <span class="pill">{{ s['name'] }}</span>
-                        {% set ns.shown = true %}
-                    {% endif %}
+                {% if s['exploring'] == 0 %}
+                <span class="pill">{{ s['name'] }}</span>
+                {% set ns.shown = true %}
+                {% endif %}
                 {% endfor %}
                 {% if not ns.shown %}
-                    <span class="muted">No skills yet.</span>
+                <span class="muted">No skills yet.</span>
                 {% endif %}
             </div>
-            <h3 class="subhead">Currently exploring</h3>
+            <h3 class="subhead">Figuring out</h3>
             <div class="pill-row">
                 {% set ns2 = namespace(shown=false) %}
                 {% for s in skills %}
-                    {% if s['exploring'] == 1 %}
-                        <span class="pill">{{ s['name'] }}</span>
-                        {% set ns2.shown = true %}
-                    {% endif %}
+                {% if s['exploring'] == 1 %}
+                <span class="pill">{{ s['name'] }}</span>
+                {% set ns2.shown = true %}
+                {% endif %}
                 {% endfor %}
                 {% if not ns2.shown %}
-                    <span class="muted">Add technologies you’re exploring.</span>
+                <span class="muted">Add technologies you’re exploring.</span>
                 {% endif %}
             </div>
         </section>
@@ -81,20 +143,32 @@
             <h2 class="underline">Projects</h2>
             <div class="grid">
                 {% for p in projects %}
-                    <article class="project">
-                        {% if p['image_path'] %}
-                        <img src="{{ url_for('static', filename=p['image_path']) }}" alt="{{ p['title'] }}">
-                        {% endif %}
-                        <div class="content">
-                            <h3>{{ p['title'] }}</h3>
-                            <p>{{ p['description'] }}</p>
+                <article class="project">
+                    {% if p['image_path'] %}
+                    <img src="{{ url_for('static', filename=p['image_path']|replace('\\', '/')) }}"
+                        alt="{{ p['title'] }}">
+                    {% endif %}
+                    <div class="content">
+                        <h3>{{ p['title'] }}</h3>
+                        <p>{{ p['description'] }}</p>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
                             {% if p['link'] %}
-                            <a class="button" href="{{ p['link'] }}" target="_blank">View</a>
+                            <a class="button" href="{{ p['link'] }}" target="_blank" style="margin-top: 0;">View</a>
+                            {% endif %}
+                            {% if p['github_link'] %}
+                            <a class="button" href="{{ p['github_link'] }}" target="_blank"
+                                style="background: #333; display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; margin-top: 0;">
+                                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: white;">
+                                    <path
+                                        d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.11.79-.25.79-.55v-2.15c-3.22.7-3.9-1.39-3.9-1.39-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.04 1.78 2.74 1.26 3.4.96.11-.76.41-1.26.74-1.55-2.57-.29-5.27-1.29-5.27-5.76 0-1.27.46-2.31 1.21-3.13-.12-.3-.53-1.52.11-3.17 0 0 1-.32 3.28 1.19a11.4 11.4 0 0 1 5.97 0c2.28-1.51 3.28-1.19 3.28-1.19.64 1.65.23 2.87.11 3.17.75.82 1.21 1.86 1.21 3.13 0 4.48-2.71 5.46-5.29 5.75.42.37.79 1.1.79 2.23v3.31c0 .3.21.67.8.55A11.5 11.5 0 0 0 12 .5z" />
+                                </svg>
+                            </a>
                             {% endif %}
                         </div>
-                    </article>
+                    </div>
+                </article>
                 {% else %}
-                    <p class="muted">No projects yet.</p>
+                <p class="muted">No projects yet.</p>
                 {% endfor %}
             </div>
         </section>
@@ -105,9 +179,18 @@
                 {% for e in experience %}
                 <li>
                     <div class="row">
-                        <strong>{{ e['role'] }}</strong>
-                        <span class="company">{{ e['company'] }}</span>
-                        <span class="dates">{{ e['start_date'] }}{% if e['end_date'] %} → {{ e['end_date'] }}{% endif %}</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            {% if e['logo_path'] %}
+                            <img src="{{ url_for('static', filename=e['logo_path']|replace('\\', '/')) }}" alt="logo"
+                                style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
+                            {% endif %}
+                            <div>
+                                <strong>{{ e['role'] }}</strong>
+                                <span class="company">{{ e['company'] }}</span>
+                            </div>
+                        </div>
+                        <span class="dates">{{ e['start_date'] }}{% if e['end_date'] %} → {{ e['end_date'] }}{% endif
+                            %}</span>
                     </div>
                     <p>{{ e['description'] }}</p>
                 </li>
@@ -117,79 +200,204 @@
             </ul>
         </section>
 
-        <section class="card chat">
-            <h2 class="underline">Ask My PDF</h2>
-            {% if has_kb %}
-            <div class="chat-box">
-                <div id="chat-log" class="chat-log"></div>
-                <div class="chat-input">
-                    <input id="question" type="text" placeholder="Type a question...">
-                    <button id="send">Ask</button>
-                </div>
-            </div>
-            {% else %}
-            <p class="muted">Knowledge base not set. Admin can upload a PDF.</p>
-            {% endif %}
+
+
+        <section id="contact" class="card contact">
+            <h2 class="underline">Contact Me</h2>
+            <form action="{{ url_for('contact') }}" method="POST">
+                <label>Name</label>
+                <input type="text" name="name" required placeholder="Your Name">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="Your Email">
+                <label>Message</label>
+                <textarea name="message" rows="4" required placeholder="How can I help you?"></textarea>
+                <button type="submit" style="margin-top: 12px;">Send Message</button>
+            </form>
         </section>
     </main>
 
-    <footer class="footer">
-        <div class="container">© {{ 2025 }} • Built with love</div>
-    </footer>
 
     <div class="social-dock">
         <a href="{{ url_for('index') }}" aria-label="Home">
-            <svg viewBox="0 0 24 24"><path d="M3 10l9-7 9 7v11a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5H9v5a1 1 0 0 1-1 1H3z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path d="M3 10l9-7 9 7v11a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5H9v5a1 1 0 0 1-1 1H3z" fill="currentColor" />
+            </svg>
         </a>
         <span class="divider"></span>
         {% if profile['github'] %}
         <a href="{{ profile['github'] }}" target="_blank" aria-label="GitHub">
-            <svg viewBox="0 0 24 24"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.11.79-.25.79-.55v-2.15c-3.22.7-3.9-1.39-3.9-1.39-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.04 1.78 2.74 1.26 3.4.96.11-.76.41-1.26.74-1.55-2.57-.29-5.27-1.29-5.27-5.76 0-1.27.46-2.31 1.21-3.13-.12-.3-.53-1.52.11-3.17 0 0 1-.32 3.28 1.19a11.4 11.4 0 0 1 5.97 0c2.28-1.51 3.28-1.19 3.28-1.19.64 1.65.23 2.87.11 3.17.75.82 1.21 1.86 1.21 3.13 0 4.48-2.71 5.46-5.29 5.75.42.37.79 1.1.79 2.23v3.31c0 .3.21.67.8.55A11.5 11.5 0 0 0 12 .5z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.11.79-.25.79-.55v-2.15c-3.22.7-3.9-1.39-3.9-1.39-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.04 1.78 2.74 1.26 3.4.96.11-.76.41-1.26.74-1.55-2.57-.29-5.27-1.29-5.27-5.76 0-1.27.46-2.31 1.21-3.13-.12-.3-.53-1.52.11-3.17 0 0 1-.32 3.28 1.19a11.4 11.4 0 0 1 5.97 0c2.28-1.51 3.28-1.19 3.28-1.19.64 1.65.23 2.87.11 3.17.75.82 1.21 1.86 1.21 3.13 0 4.48-2.71 5.46-5.29 5.75.42.37.79 1.1.79 2.23v3.31c0 .3.21.67.8.55A11.5 11.5 0 0 0 12 .5z"
+                    fill="currentColor" />
+            </svg>
         </a>
         {% endif %}
         {% if profile['linkedin'] %}
         <span class="divider"></span>
         <a href="{{ profile['linkedin'] }}" target="_blank" aria-label="LinkedIn">
-            <svg viewBox="0 0 24 24"><path d="M4.98 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM3 8.98h4v12H3zM9.5 8.98h3.83v1.64h.05c.53-.95 1.82-1.95 3.75-1.95 4 0 4.74 2.63 4.74 6.05v6.26h-4v-5.55c0-1.32-.02-3.02-1.84-3.02-1.84 0-2.12 1.44-2.12 2.93v5.64h-4v-12z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M4.98 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM3 8.98h4v12H3zM9.5 8.98h3.83v1.64h.05c.53-.95 1.82-1.95 3.75-1.95 4 0 4.74 2.63 4.74 6.05v6.26h-4v-5.55c0-1.32-.02-3.02-1.84-3.02-1.84 0-2.12 1.44-2.12 2.93v5.64h-4v-12z"
+                    fill="currentColor" />
+            </svg>
         </a>
         {% endif %}
         {% if profile['twitter'] %}
         <span class="divider"></span>
         <a href="{{ profile['twitter'] }}" target="_blank" aria-label="X">
-            <svg viewBox="0 0 24 24"><path d="M17.7 3H21l-7.5 8.6L21.8 21h-3.3L13 13.7 8 21H3.8l7.9-9.2L4.3 3h3.3l4.6 6.7z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path d="M17.7 3H21l-7.5 8.6L21.8 21h-3.3L13 13.7 8 21H3.8l7.9-9.2L4.3 3h3.3l4.6 6.7z"
+                    fill="currentColor" />
+            </svg>
         </a>
         {% endif %}
+        <span class="divider"></span>
+        <button id="themeToggle" aria-label="Toggle theme" style="position: relative; overflow: hidden;">
+            <!-- Sun Icon (Visible in Dark Mode) -->
+            <svg class="sun-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <!-- Moon Icon (Visible in Light Mode) -->
+            <svg class="moon-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </button>
+        <style>
+            /* Default: Hide both */
+            #themeToggle .sun-icon,
+            #themeToggle .moon-icon {
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            /* Dark Mode: Show Sun */
+            html[data-theme="dark"] #themeToggle .sun-icon {
+                opacity: 1;
+            }
+
+            /* Light Mode: Show Moon */
+            html[data-theme="light"] #themeToggle .moon-icon {
+                opacity: 1;
+            }
+        </style>
         {% if profile['website'] %}
         <span class="divider"></span>
         <a href="{{ profile['website'] }}" target="_blank" aria-label="Website">
-            <svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2c1.7 0 3.26.52 4.56 1.41L9.41 12 12 14.59 18.59 8A8 8 0 1 1 12 4z" fill="currentColor"/></svg>
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2c1.7 0 3.26.52 4.56 1.41L9.41 12 12 14.59 18.59 8A8 8 0 1 1 12 4z"
+                    fill="currentColor" />
+            </svg>
         </a>
         {% endif %}
     </div>
 
+    <div class="chat-widget">
+        <button class="chat-button" onclick="toggleChat()">
+            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+        </button>
+        <div class="chat-window" id="chatWindow">
+            <div class="chat-header">
+                <span>Ask Zaid's AI</span>
+                <button onclick="toggleChat()"
+                    style="background:none; border:none; color:white; cursor:pointer;">✕</button>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="message bot">Hi! I'm Zaid's AI assistant. Ask me anything about his work or experience!
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+                <button onclick="sendMessage()">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+                        stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
-    const logEl = document.getElementById('chat-log');
-    const inputEl = document.getElementById('question');
-    const sendEl = document.getElementById('send');
-    function addMsg(who, text) {
-        const d = document.createElement('div');
-        d.className = who;
-        d.textContent = text;
-        logEl.appendChild(d);
-        logEl.scrollTop = logEl.scrollHeight;
-    }
-    if (sendEl) {
-        sendEl.addEventListener('click', async () => {
-            const q = (inputEl.value || '').trim();
-            if (!q) return;
-            addMsg('user', q);
-            inputEl.value = '';
-            const r = await fetch("{{ url_for('api_chat') }}", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question: q }) });
-            const j = await r.json();
-            addMsg('bot', j.answer);
-        });
-        inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') sendEl.click(); });
-    }
+        const root = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        root.setAttribute('data-theme', savedTheme);
+
+        const themeToggle = document.getElementById('themeToggle');
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const current = root.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            });
+        }
+
+        function toggleChat() {
+            const chatWindow = document.getElementById('chatWindow');
+            chatWindow.classList.toggle('open');
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const messages = document.getElementById('chatMessages');
+            const text = input.value.trim();
+
+            if (!text) return;
+
+            // Add user message
+            messages.innerHTML += `<div class="message user">${text}</div>`;
+            input.value = '';
+            messages.scrollTop = messages.scrollHeight;
+
+            // Add loading state
+            const loadingId = 'loading-' + Date.now();
+            messages.innerHTML += `<div class="message bot" id="${loadingId}">Thinking...</div>`;
+            messages.scrollTop = messages.scrollHeight;
+
+            try {
+                const response = await fetch('/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text })
+                });
+                const data = await response.json();
+
+                // Remove loading and add bot response
+                document.getElementById(loadingId).remove();
+                messages.innerHTML += `<div class="message bot">${data.response}</div>`;
+            } catch (error) {
+                document.getElementById(loadingId).remove();
+                messages.innerHTML += `<div class="message bot">Sorry, something went wrong.</div>`;
+            }
+            messages.scrollTop = messages.scrollHeight;
+        }
     </script>
 </body>
+
 </html>
+```

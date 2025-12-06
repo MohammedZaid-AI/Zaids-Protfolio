@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
+
 <body>
     <header class="admin-header">
         <div class="container">
@@ -18,6 +20,30 @@
         </div>
     </header>
     <main class="container">
+        <section class="card">
+            <h2>Messages</h2>
+            {% if messages %}
+            <div class="grid">
+                {% for m in messages %}
+                <div class="project" style="padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <strong>{{ m['name'] }}</strong>
+                        <span class="muted" style="font-size: 0.9em;">{{ m['timestamp'][:10] }}</span>
+                    </div>
+                    <div style="font-size: 0.9em; margin-bottom: 8px; color: var(--accent);">{{ m['email'] }}</div>
+                    <p style="margin: 0 0 12px;">{{ m['message'] }}</p>
+                    <form method="post" action="{{ url_for('admin_messages_delete', mid=m['id']) }}">
+                        <button type="submit" class="danger"
+                            style="padding: 6px 10px; font-size: 0.9em;">Delete</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="muted">No messages yet.</p>
+            {% endif %}
+        </section>
+
         <section class="card">
             <h2>Profile</h2>
             <form method="post" action="{{ url_for('admin_profile') }}" enctype="multipart/form-data">
@@ -40,7 +66,21 @@
                     </div>
                     <div>
                         {% if profile['avatar_path'] %}
-                        <img class="avatar small" src="{{ url_for('static', filename=profile['avatar_path']|replace('\\', '/')) }}" alt="avatar">
+                        <img class="avatar small"
+                            src="{{ url_for('static', filename=profile['avatar_path']|replace('\\', '/')) }}"
+                            alt="avatar">
+                        {% endif %}
+                    </div>
+                    <div>
+                        <label>Back Avatar (Flip)</label>
+                        <input type="file" name="avatar_back" accept="image/*">
+                    </div>
+                    <div>
+                        {% if profile['avatar_back_path'] %}
+                        <img class="avatar small"
+                            src="{{ url_for('static', filename=profile['avatar_back_path']|replace('\\', '/')) }}"
+                            alt="back avatar">
+                        <p class="muted" style="margin-top: 4px; font-size: 0.8em;">Current Back</p>
                         {% endif %}
                     </div>
                 </div>
@@ -67,36 +107,48 @@
         </section>
 
         <section class="card">
+            <h2>Knowledge Base (for Chatbot)</h2>
+            <form method="post" action="{{ url_for('admin_settings') }}" enctype="multipart/form-data" class="inline">
+                <input type="file" name="knowledge_pdf" accept=".pdf" required>
+                <button type="submit">Upload PDF</button>
+            </form>
+            {% if knowledge_pdf_path %}
+            <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
+                <span class="muted">Current: {{ knowledge_pdf_path }}</span>
+                <form method="post" action="{{ url_for('admin_knowledge_delete') }}" style="margin:0;">
+                    <button type="submit" class="danger" style="padding: 4px 10px; font-size: 0.9em;">Delete</button>
+                </form>
+            </div>
+            {% else %}
+            <p class="muted" style="margin-top: 8px;">No knowledge base uploaded.</p>
+            {% endif %}
+        </section>
+
+        <section class="card">
             <h2>Skills</h2>
             <form method="post" action="{{ url_for('admin_skills_add') }}" class="inline">
                 <input type="text" name="name" placeholder="e.g. TypeScript">
-                <label class="inline-check"><input type="checkbox" name="exploring"> Currently exploring</label>
-                <button type="submit">Add</button>
+                <label class="inline-check"><input type="checkbox" name="exploring"> Figuring out</label>
+                <button type="submit">Save Skill</button>
             </form>
             <div class="pill-row">
                 {% for s in skills %}
-                    <span class="pill">{{ s['name'] }}{% if s['exploring'] %} • exploring{% endif %}</span>
-                    <form method="post" action="{{ url_for('admin_skills_delete', sid=s['id']) }}" class="inline">
-                        <button type="submit" class="danger">Delete</button>
+                <span class="pill">{{ s['name'] }}{% if s['exploring'] %} • exploring{% endif %}</span>
+                <div style="display: inline-flex; gap: 4px;">
+                    <a href="{{ url_for('admin_skills_edit', sid=s['id']) }}" class="button"
+                        style="padding: 4px 8px; font-size: 0.8em; background: var(--muted);">Edit</a>
+                    <form method="post" action="{{ url_for('admin_skills_delete', sid=s['id']) }}" class="inline"
+                        style="margin:0;">
+                        <button type="submit" class="danger" style="padding: 4px 8px; font-size: 0.8em;">Del</button>
                     </form>
+                </div>
                 {% else %}
-                    <span class="muted">Add your skills.</span>
+                <span class="muted">Add your skills.</span>
                 {% endfor %}
             </div>
         </section>
 
-        <section class="card">
-            <h2>Knowledge PDF</h2>
-            {% if knowledge_pdf_path %}
-            <p>Current: {{ knowledge_pdf_path }}</p>
-            {% else %}
-            <p class="muted">No PDF uploaded.</p>
-            {% endif %}
-            <form method="post" action="{{ url_for('admin_knowledge') }}" enctype="multipart/form-data">
-                <input type="file" name="pdf" accept="application/pdf" required>
-                <button type="submit">Upload PDF</button>
-            </form>
-        </section>
+
 
         <section class="card">
             <h2>Add Project</h2>
@@ -107,22 +159,30 @@
                 <textarea name="description" rows="3"></textarea>
                 <label>Link</label>
                 <input type="url" name="link">
+                <label>GitHub Link</label>
+                <input type="url" name="github_link">
                 <label>Image</label>
                 <input type="file" name="image" accept="image/*">
-                <button type="submit">Add Project</button>
+                <button type="submit">Save Project</button>
             </form>
             <div class="grid">
                 {% for p in projects %}
                 <article class="project">
                     {% if p['image_path'] %}
-                    <img src="{{ url_for('static', filename=p['image_path']) }}" alt="{{ p['title'] }}">
+                    <img src="{{ url_for('static', filename=p['image_path']|replace('\\', '/')) }}"
+                        alt="{{ p['title'] }}">
                     {% endif %}
                     <div class="content">
                         <h3>{{ p['title'] }}</h3>
                         <p>{{ p['description'] }}</p>
-                        <form method="post" action="{{ url_for('admin_projects_delete', pid=p['id']) }}">
-                            <button type="submit" class="danger">Delete</button>
-                        </form>
+                        <div style="display: flex; gap: 8px; margin-top: 12px;">
+                            <a href="{{ url_for('admin_projects_edit', pid=p['id']) }}" class="button"
+                                style="background: var(--muted);">Edit</a>
+                            <form method="post" action="{{ url_for('admin_projects_delete', pid=p['id']) }}"
+                                style="margin:0;">
+                                <button type="submit" class="danger">Delete</button>
+                            </form>
+                        </div>
                     </div>
                 </article>
                 {% endfor %}
@@ -131,7 +191,7 @@
 
         <section class="card">
             <h2>Add Experience</h2>
-            <form method="post" action="{{ url_for('admin_experience_add') }}">
+            <form method="post" action="{{ url_for('admin_experience_add') }}" enctype="multipart/form-data">
                 <div class="grid-2">
                     <div>
                         <label>Role</label>
@@ -152,9 +212,11 @@
                         <input type="text" name="end_date" placeholder="YYYY-MM or Present">
                     </div>
                 </div>
+                <label>Logo</label>
+                <input type="file" name="logo" accept="image/*">
                 <label>Description</label>
                 <textarea name="description" rows="3"></textarea>
-                <button type="submit">Add Experience</button>
+                <button type="submit">Save Experience</button>
             </form>
             <ul class="timeline">
                 {% for e in experience %}
@@ -162,16 +224,24 @@
                     <div class="row">
                         <strong>{{ e['role'] }}</strong>
                         <span class="company">{{ e['company'] }}</span>
-                        <span class="dates">{{ e['start_date'] }}{% if e['end_date'] %} → {{ e['end_date'] }}{% endif %}</span>
+                        <span class="dates">{{ e['start_date'] }}{% if e['end_date'] %} → {{ e['end_date'] }}{% endif
+                            %}</span>
                     </div>
                     <p>{{ e['description'] }}</p>
-                    <form method="post" action="{{ url_for('admin_experience_delete', eid=e['id']) }}">
-                        <button type="submit" class="danger">Delete</button>
-                    </form>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <a href="{{ url_for('admin_experience_edit', eid=e['id']) }}" class="button"
+                            style="background: var(--muted); padding: 6px 12px; font-size: 0.9em;">Edit</a>
+                        <form method="post" action="{{ url_for('admin_experience_delete', eid=e['id']) }}"
+                            style="margin:0;">
+                            <button type="submit" class="danger"
+                                style="padding: 6px 12px; font-size: 0.9em;">Delete</button>
+                        </form>
+                    </div>
                 </li>
                 {% endfor %}
             </ul>
         </section>
     </main>
 </body>
+
 </html>

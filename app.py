@@ -7,13 +7,29 @@ from PyPDF2 import PdfReader
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+from langchain_core.prompts import PromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_classic.chains import LLMChain
+from langchain_classic.chains.summarize import load_summarize_chain  # Fixed
+from langchain_core.documents import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+from langchain_community.embeddings import HuggingFaceEmbeddings
+from dotenv import load_dotenv
+
+load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", os.urandom(24))
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD")
+# Ensure token is set
+if not os.environ.get("GOOGLE_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = os.getenv("GOOGLE_API_KEY")
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 DB_PATH = os.path.join(BASE_DIR, "data.db")
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -32,11 +48,17 @@ def init_db():
             github TEXT,
             twitter TEXT,
             linkedin TEXT,
-            website TEXT
+            website TEXT,
+            avatar_path TEXT,
+            avatar_back_path TEXT
         )
     """)
     try:
         cur.execute("ALTER TABLE profile ADD COLUMN avatar_path TEXT")
+    except Exception:
+        pass
+    try:
+        cur.execute("ALTER TABLE profile ADD COLUMN avatar_back_path TEXT")
     except Exception:
         pass
     cur.execute("""
@@ -46,9 +68,14 @@ def init_db():
             description TEXT,
             image_path TEXT,
             link TEXT,
+            github_link TEXT,
             created_at TEXT
         )
     """)
+    try:
+        cur.execute("ALTER TABLE projects ADD COLUMN github_link TEXT")
+    except Exception:
+        pass
     cur.execute("""
         CREATE TABLE IF NOT EXISTS experience (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -56,9 +83,14 @@ def init_db():
             company TEXT,
             start_date TEXT,
             end_date TEXT,
-            description TEXT
+            description TEXT,
+            logo_path TEXT
         )
     """)
+    try:
+        cur.execute("ALTER TABLE experience ADD COLUMN logo_path TEXT")
+    except Exception:
+        pass
     cur.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY,
@@ -74,10 +106,19 @@ def init_db():
     """)
     cur.execute("SELECT COUNT(*) AS c FROM profile")
     if cur.fetchone()[0] == 0:
-        cur.execute("INSERT INTO profile (id, name, tagline, about, github, twitter, linkedin, website) VALUES (1, '', '', '', '', '', '', '')")
+        cur.execute("INSERT INTO profile (id, name, tagline, about, github, twitter, linkedin, website, avatar_path, avatar_back_path) VALUES (1, '', '', '', '', '', '', '', '', '')")
     cur.execute("SELECT COUNT(*) AS c FROM settings")
     if cur.fetchone()[0] == 0:
         cur.execute("INSERT INTO settings (id, knowledge_pdf_path) VALUES (1, '')")
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT,
+            email TEXT,
+            message TEXT,
+            timestamp TEXT
+        )
+    """)
     conn.commit()
     conn.close()
 
@@ -152,6 +193,19 @@ def index():
     conn.close()
     return render_template("index.html", profile=profile, projects=projects, experience=experience, skills=skills, has_kb=bool(knowledge_pdf_path))
 
+@app.route("/contact", methods=["POST"])
+def contact():
+    name = request.form.get("name", "")
+    email = request.form.get("email", "")
+    message = request.form.get("message", "")
+    if name and message:
+        conn = get_db()
+        cur = conn.cursor()
+        cur.execute("INSERT INTO messages (name, email, message, timestamp) VALUES (?, ?, ?, ?)", (name, email, message, datetime.utcnow().isoformat()))
+        conn.commit()
+        conn.close()
+    return redirect(url_for("index"))
+
 @app.route("/admin/login", methods=["GET", "POST"])
 def admin_login():
     if request.method == "POST":
@@ -188,8 +242,42 @@ def admin_dashboard():
     cur = conn.cursor()
     cur.execute("SELECT * FROM skills ORDER BY exploring ASC, name ASC")
     skills = cur.fetchall()
+    cur.execute("SELECT * FROM messages ORDER BY datetime(timestamp) DESC")
+    messages = cur.fetchall()
     conn.close()
-    return render_template("admin_dashboard.html", profile=profile, projects=projects, experience=experience, knowledge_pdf_path=knowledge_pdf_path, skills=skills)
+    return render_template("admin_dashboard.html", profile=profile, projects=projects, experience=experience, knowledge_pdf_path=knowledge_pdf_path, skills=skills, messages=messages)
+
+@app.route("/admin/messages/delete/<int:mid>", methods=["POST"])
+def admin_messages_delete(mid):
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM messages WHERE id=?", (mid,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/knowledge/delete", methods=["POST"])
+def admin_knowledge_delete():
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT knowledge_pdf_path FROM settings WHERE id=1")
+    row = cur.fetchone()
+    if row and row[0]:
+        path = row[0]
+        full_path = os.path.join(app.static_folder, path)
+        if os.path.exists(full_path):
+            try:
+                os.remove(full_path)
+            except Exception:
+                pass
+        cur.execute("UPDATE settings SET knowledge_pdf_path='' WHERE id=1")
+        conn.commit()
+    conn.close()
+    return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/profile", methods=["POST"])
 def admin_profile():
@@ -202,21 +290,54 @@ def admin_profile():
     twitter = request.form.get("twitter", "")
     linkedin = request.form.get("linkedin", "")
     website = request.form.get("website", "")
-    avatar = request.files.get("avatar")
-    avatar_path = None
-    if avatar and avatar.filename:
-        filename = secure_filename(avatar.filename)
-        save_path = os.path.join(UPLOAD_FOLDER, filename)
-        avatar.save(save_path)
-        avatar_path = "uploads/" + filename.replace("\\", "/")
+    
     conn = get_db()
     cur = conn.cursor()
-    if avatar_path:
-        cur.execute("UPDATE profile SET name=?, tagline=?, about=?, github=?, twitter=?, linkedin=?, website=?, avatar_path=? WHERE id=1", (name, tagline, about, github, twitter, linkedin, website, avatar_path))
-    else:
-        cur.execute("UPDATE profile SET name=?, tagline=?, about=?, github=?, twitter=?, linkedin=?, website=? WHERE id=1", (name, tagline, about, github, twitter, linkedin, website))
+
+    cur.execute("UPDATE profile SET name=?, tagline=?, about=?, github=?, twitter=?, linkedin=?, website=? WHERE id=1", (name, tagline, about, github, twitter, linkedin, website))
     conn.commit()
+
+    if "avatar" in request.files:
+        f = request.files["avatar"]
+        if f and f.filename:
+            filename = secure_filename(f.filename)
+            path = "uploads/" + filename
+            f.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            cur.execute("UPDATE profile SET avatar_path=? WHERE id=1", (path,))
+            conn.commit()
+
+    if "avatar_back" in request.files:
+        f = request.files["avatar_back"]
+        if f and f.filename:
+            filename = secure_filename(f.filename)
+            path = "uploads/" + filename
+            f.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            cur.execute("UPDATE profile SET avatar_back_path=? WHERE id=1", (path,))
+            conn.commit()
+
     conn.close()
+    return redirect(url_for("admin_dashboard"))
+
+    return redirect(url_for("admin_dashboard"))
+
+@app.route("/admin/settings", methods=["POST"])
+def admin_settings():
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    
+    if "knowledge_pdf" in request.files:
+        f = request.files["knowledge_pdf"]
+        if f and f.filename:
+            filename = secure_filename(f.filename)
+            path = "uploads/" + filename
+            f.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+            
+            conn = get_db()
+            cur = conn.cursor()
+            cur.execute("UPDATE settings SET knowledge_pdf_path=? WHERE id=1", (path,))
+            conn.commit()
+            conn.close()
+            
     return redirect(url_for("admin_dashboard"))
 
 @app.route("/admin/projects/add", methods=["POST"])
@@ -226,16 +347,17 @@ def admin_projects_add():
     title = request.form.get("title", "")
     description = request.form.get("description", "")
     link = request.form.get("link", "")
+    github_link = request.form.get("github_link", "")
     image = request.files.get("image")
     image_path = ""
     if image and image.filename:
         filename = secure_filename(image.filename)
         save_path = os.path.join(UPLOAD_FOLDER, filename)
         image.save(save_path)
-        image_path = os.path.join("uploads", filename)
+        image_path = "uploads/" + filename
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("INSERT INTO projects (title, description, image_path, link, created_at) VALUES (?, ?, ?, ?, ?)", (title, description, image_path, link, datetime.utcnow().isoformat()))
+    cur.execute("INSERT INTO projects (title, description, image_path, link, github_link, created_at) VALUES (?, ?, ?, ?, ?, ?)", (title, description, image_path, link, github_link, datetime.utcnow().isoformat()))
     conn.commit()
     conn.close()
     return redirect(url_for("admin_dashboard"))
@@ -260,9 +382,16 @@ def admin_experience_add():
     start_date = request.form.get("start_date", "")
     end_date = request.form.get("end_date", "")
     description = request.form.get("description", "")
+    logo = request.files.get("logo")
+    logo_path = ""
+    if logo and logo.filename:
+        filename = secure_filename(logo.filename)
+        save_path = os.path.join(UPLOAD_FOLDER, filename)
+        logo.save(save_path)
+        logo_path = "uploads/" + filename
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("INSERT INTO experience (role, company, start_date, end_date, description) VALUES (?, ?, ?, ?, ?)", (role, company, start_date, end_date, description))
+    cur.execute("INSERT INTO experience (role, company, start_date, end_date, description, logo_path) VALUES (?, ?, ?, ?, ?, ?)", (role, company, start_date, end_date, description, logo_path))
     conn.commit()
     conn.close()
     return redirect(url_for("admin_dashboard"))
@@ -336,6 +465,195 @@ def api_chat():
         rag.build_from_pdf(os.path.join(BASE_DIR, knowledge_pdf_path))
     answer = rag.answer(question)
     return jsonify({"answer": answer})
+
+@app.route("/admin/projects/edit/<int:pid>", methods=["GET", "POST"])
+def admin_projects_edit(pid):
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    conn = get_db()
+    cur = conn.cursor()
+    if request.method == "POST":
+        title = request.form.get("title", "")
+        description = request.form.get("description", "")
+        link = request.form.get("link", "")
+        github_link = request.form.get("github_link", "")
+        image = request.files.get("image")
+        
+        if image and image.filename:
+            filename = secure_filename(image.filename)
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+            image.save(save_path)
+            image_path = "uploads/" + filename
+            cur.execute("UPDATE projects SET title=?, description=?, link=?, github_link=?, image_path=? WHERE id=?", (title, description, link, github_link, image_path, pid))
+        else:
+            cur.execute("UPDATE projects SET title=?, description=?, link=?, github_link=? WHERE id=?", (title, description, link, github_link, pid))
+        conn.commit()
+        conn.close()
+        return redirect(url_for("admin_dashboard"))
+    
+    cur.execute("SELECT * FROM projects WHERE id=?", (pid,))
+    project = cur.fetchone()
+    conn.close()
+    return render_template("edit_project.html", project=project)
+
+@app.route("/admin/experience/edit/<int:eid>", methods=["GET", "POST"])
+def admin_experience_edit(eid):
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    conn = get_db()
+    cur = conn.cursor()
+    if request.method == "POST":
+        role = request.form.get("role", "")
+        company = request.form.get("company", "")
+        start_date = request.form.get("start_date", "")
+        end_date = request.form.get("end_date", "")
+        description = request.form.get("description", "")
+        logo = request.files.get("logo")
+        
+        if logo and logo.filename:
+            filename = secure_filename(logo.filename)
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+            logo.save(save_path)
+            logo_path = "uploads/" + filename
+            cur.execute("UPDATE experience SET role=?, company=?, start_date=?, end_date=?, description=?, logo_path=? WHERE id=?", (role, company, start_date, end_date, description, logo_path, eid))
+        else:
+            cur.execute("UPDATE experience SET role=?, company=?, start_date=?, end_date=?, description=? WHERE id=?", (role, company, start_date, end_date, description, eid))
+        conn.commit()
+        conn.close()
+        return redirect(url_for("admin_dashboard"))
+        
+    cur.execute("SELECT * FROM experience WHERE id=?", (eid,))
+    experience = cur.fetchone()
+    conn.close()
+    return render_template("edit_experience.html", experience=experience)
+
+@app.route("/admin/skills/edit/<int:sid>", methods=["GET", "POST"])
+def admin_skills_edit(sid):
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    conn = get_db()
+    cur = conn.cursor()
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        exploring = 1 if request.form.get("exploring") == "on" else 0
+        if name:
+            cur.execute("UPDATE skills SET name=?, exploring=? WHERE id=?", (name, exploring, sid))
+            conn.commit()
+        conn.close()
+        return redirect(url_for("admin_dashboard"))
+        
+    cur.execute("SELECT * FROM skills WHERE id=?", (sid,))
+    skill = cur.fetchone()
+    conn.close()
+    return render_template("edit_skill.html", skill=skill)
+
+
+@app.route("/chat", methods=["POST"])
+def chat():
+    print("--- Chat Request Received ---")
+    data = request.json
+    query = data.get("message", "")
+    print(f"Query: {query}")
+    if not query:
+        return jsonify({"response": "Please say something."})
+    
+    try:
+        response = get_rag_response(query)
+        print(f"Response generated: {response[:50]}...")
+        return jsonify({"response": response})
+    except Exception as e:
+        print(f"Error in chat route: {e}")
+        return jsonify({"response": "An error occurred."})
+
+def get_rag_response(query):
+    print("Step 1: Checking DB for PDF")
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("SELECT knowledge_pdf_path FROM settings WHERE id=1")
+    row = cur.fetchone()
+    conn.close()
+
+    if not row or not row[0]:
+        print("No PDF found in DB")
+        return "I don't have any knowledge base uploaded yet."
+
+    pdf_path = os.path.join(app.static_folder, row[0])
+    print(f"PDF Path: {pdf_path}")
+    if not os.path.exists(pdf_path):
+        print("PDF file missing on disk")
+        return "The knowledge base file seems to be missing."
+
+    text = ""
+    try:
+        print("Step 2: Reading PDF")
+        pdf_reader = PdfReader(pdf_path)
+        for page in pdf_reader.pages:
+            content = page.extract_text()
+            if content:
+                text += content
+        print(f"PDF Read complete. Length: {len(text)}")
+    except Exception as e:
+        print(f"Error reading PDF: {e}")
+        return f"Error reading PDF: {str(e)}"
+
+    print("Step 3: Splitting Text")
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=800,
+        chunk_overlap=100
+    )
+    chunks = text_splitter.split_text(text)
+    print(f"Chunks created: {len(chunks)}")
+
+    if not chunks:
+        return "The PDF seems to be empty."
+
+    print("Step 4: Generating Embeddings")
+    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    
+    print("Step 5: Creating Vector Store")
+    vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
+    
+    print("Step 6: Similarity Search")
+    results = vectorstore.similarity_search(query, k=3)
+
+    if not results:
+        return "I couldn't find any relevant information in my knowledge base."
+
+    context_text = '\n'.join([r.page_content for r in results])
+    print("Step 7: Initializing LLM")
+
+    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
+
+    prompt = PromptTemplate(
+        input_variables=["text", "input"],
+        template="""
+You are Zaid's AI Assistant. Your job is to answer questions about Zaid based on his portfolio and resume.
+
+Use the following context to answer the user's question.
+Context: {text}
+
+Question: {input}
+Response:
+"""
+    )
+
+    chain = load_summarize_chain(
+        llm=llm,
+        chain_type="stuff",
+        prompt=prompt
+    )
+
+    docs = [Document(page_content=context_text)]
+    try:
+        print("Step 8: Running Chain")
+        answer = chain.run(input_documents=docs, input=query)
+        if "Response:" in answer:
+            answer = answer.split("Response:")[-1].strip()
+        print("Response generated successfully")
+        return answer
+    except Exception as e:
+        print(f"Error generating response: {e}")
+        return f"Error generating response: {str(e)}"
 
 if __name__ == "__main__":
     init_db()

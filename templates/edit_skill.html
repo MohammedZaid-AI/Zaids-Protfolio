@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Skill</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <header class="admin-header">
+        <div class="container">
+            <h1>Edit Skill</h1>
+            <nav>
+                <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container narrow">
+        <section class="card">
+            <form method="post">
+                <label>Name</label>
+                <input type="text" name="name" value="{{ skill['name'] }}" required>
+                <label class="inline-check" style="margin-top: 12px;">
+                    <input type="checkbox" name="exploring" {% if skill['exploring'] %}checked{% endif %}>
+                    Figuring out
+                </label>
+                <button type="submit" style="margin-top: 16px;">Save Changes</button>
+            </form>
+        </section>
+    </main>
+</body>
+
+</html>
