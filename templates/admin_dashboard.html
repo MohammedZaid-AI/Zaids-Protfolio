@@ -107,21 +107,56 @@
         </section>
 
         <section class="card">
-            <h2>Knowledge Base (for Chatbot)</h2>
-            <form method="post" action="{{ url_for('admin_settings') }}" enctype="multipart/form-data" class="inline">
-                <input type="file" name="knowledge_pdf" accept=".pdf" required>
-                <button type="submit">Upload PDF</button>
+            <h2>Research Papers</h2>
+            <form method="post" action="{{ url_for('admin_research_add') }}" enctype="multipart/form-data">
+                <div class="grid-2">
+                    <div>
+                        <label>Title</label>
+                        <input type="text" name="title" required>
+                    </div>
+                    <div>
+                        <label>Publication / Conference</label>
+                        <input type="text" name="publication" placeholder="e.g. IEEE 2024">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div>
+                        <label>Date</label>
+                        <input type="text" name="date" placeholder="YYYY-MM-DD" required>
+                    </div>
+                    <div>
+                        <label>Link to Paper</label>
+                        <input type="url" name="link" placeholder="https://...">
+                    </div>
+                </div>
+                <label>Description</label>
+                <textarea name="description" rows="3"></textarea>
+                <button type="submit">Add Paper</button>
             </form>
-            {% if knowledge_pdf_path %}
-            <div style="margin-top: 12px; display: flex; align-items: center; gap: 12px;">
-                <span class="muted">Current: {{ knowledge_pdf_path }}</span>
-                <form method="post" action="{{ url_for('admin_knowledge_delete') }}" style="margin:0;">
-                    <button type="submit" class="danger" style="padding: 4px 10px; font-size: 0.9em;">Delete</button>
-                </form>
+            <div class="grid">
+                {% for r in research_papers %}
+                <div class="project" style="padding: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <strong>{{ r['title'] }}</strong>
+                        <span class="muted" style="font-size: 0.9em;">{{ r['date'] }}</span>
+                    </div>
+                    <div style="font-size: 0.9em; margin-bottom: 8px; color: var(--accent);">{{ r['publication'] }}
+                    </div>
+                    <p style="margin: 0 0 12px;">{{ r['description'] }}</p>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="{{ url_for('admin_research_edit', rid=r['id']) }}" class="button"
+                            style="background: var(--muted); padding: 6px 10px; font-size: 0.9em;">Edit</a>
+                        <form method="post" action="{{ url_for('admin_research_delete', rid=r['id']) }}"
+                            style="margin:0;">
+                            <button type="submit" class="danger"
+                                style="padding: 6px 10px; font-size: 0.9em;">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                {% else %}
+                <p class="muted">No research papers added.</p>
+                {% endfor %}
             </div>
-            {% else %}
-            <p class="muted" style="margin-top: 8px;">No knowledge base uploaded.</p>
-            {% endif %}
         </section>
 
         <section class="card">

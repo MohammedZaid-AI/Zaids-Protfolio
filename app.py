@@ -3,18 +3,6 @@ import sqlite3
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from werkzeug.utils import secure_filename
-from PyPDF2 import PdfReader
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-
-from langchain_core.prompts import PromptTemplate
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_classic.chains import LLMChain
-from langchain_classic.chains.summarize import load_summarize_chain  # Fixed
-from langchain_core.documents import Document
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -119,59 +107,18 @@ def init_db():
             timestamp TEXT
         )
     """)
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS research_papers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            publication TEXT,
+            date TEXT,
+            link TEXT,
+            description TEXT
+        )
+    """)
     conn.commit()
     conn.close()
-
-class RAGEngine:
-    def __init__(self):
-        self.vectorizer = None
-        self.chunks = []
-        self.matrix = None
-        self.ready = False
-
-    def build_from_pdf(self, path):
-        self.chunks = []
-        text = ""
-        try:
-            reader = PdfReader(path)
-            for page in reader.pages:
-                content = page.extract_text() or ""
-                text += content + "\n\n"
-        except Exception:
-            self.ready = False
-            return False
-        units = [u.strip() for u in text.split("\n\n") if u.strip()]
-        buf = ""
-        for u in units:
-            if len(buf) + len(u) < 800:
-                buf = (buf + "\n" + u).strip()
-            else:
-                if buf:
-                    self.chunks.append(buf)
-                buf = u
-        if buf:
-            self.chunks.append(buf)
-        if not self.chunks:
-            self.ready = False
-            return False
-        self.vectorizer = TfidfVectorizer(stop_words="english")
-        self.matrix = self.vectorizer.fit_transform(self.chunks)
-        self.ready = True
-        return True
-
-    def answer(self, question, k=3):
-        if not self.ready:
-            return "Knowledge base is not ready. Upload a PDF in admin."
-        q_vec = self.vectorizer.transform([question])
-        sims = cosine_similarity(q_vec, self.matrix).ravel()
-        idxs = sims.argsort()[::-1][:k]
-        parts = [self.chunks[i] for i in idxs if sims[i] > 0]
-        if not parts:
-            return "I could not find relevant information in the document."
-        joined = "\n\n".join(parts)
-        return joined[:1500]
-
-rag = RAGEngine()
 
 def require_login():
     return session.get("logged_in") is True
@@ -188,10 +135,10 @@ def index():
     experience = cur.fetchall()
     cur.execute("SELECT * FROM skills ORDER BY exploring ASC, name ASC")
     skills = cur.fetchall()
-    cur.execute("SELECT knowledge_pdf_path FROM settings WHERE id=1")
-    knowledge_pdf_path = cur.fetchone()[0]
+    cur.execute("SELECT * FROM research_papers ORDER BY date DESC")
+    research_papers = cur.fetchall()
     conn.close()
-    return render_template("index.html", profile=profile, projects=projects, experience=experience, skills=skills, has_kb=bool(knowledge_pdf_path))
+    return render_template("index.html", profile=profile, projects=projects, experience=experience, skills=skills, research_papers=research_papers)
 
 @app.route("/contact", methods=["POST"])
 def contact():
@@ -235,17 +182,14 @@ def admin_dashboard():
     projects = cur.fetchall()
     cur.execute("SELECT * FROM experience ORDER BY id DESC")
     experience = cur.fetchall()
-    cur.execute("SELECT knowledge_pdf_path FROM settings WHERE id=1")
-    knowledge_pdf_path = cur.fetchone()[0]
-    conn.close()
-    conn = get_db()
-    cur = conn.cursor()
     cur.execute("SELECT * FROM skills ORDER BY exploring ASC, name ASC")
     skills = cur.fetchall()
     cur.execute("SELECT * FROM messages ORDER BY datetime(timestamp) DESC")
     messages = cur.fetchall()
+    cur.execute("SELECT * FROM research_papers ORDER BY date DESC")
+    research_papers = cur.fetchall()
     conn.close()
-    return render_template("admin_dashboard.html", profile=profile, projects=projects, experience=experience, knowledge_pdf_path=knowledge_pdf_path, skills=skills, messages=messages)
+    return render_template("admin_dashboard.html", profile=profile, projects=projects, experience=experience, skills=skills, messages=messages, research_papers=research_papers)
 
 @app.route("/admin/messages/delete/<int:mid>", methods=["POST"])
 def admin_messages_delete(mid):
@@ -258,26 +202,7 @@ def admin_messages_delete(mid):
     conn.close()
     return redirect(url_for("admin_dashboard"))
 
-@app.route("/admin/knowledge/delete", methods=["POST"])
-def admin_knowledge_delete():
-    if not require_login():
-        return redirect(url_for("admin_login"))
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT knowledge_pdf_path FROM settings WHERE id=1")
-    row = cur.fetchone()
-    if row and row[0]:
-        path = row[0]
-        full_path = os.path.join(app.static_folder, path)
-        if os.path.exists(full_path):
-            try:
-                os.remove(full_path)
-            except Exception:
-                pass
-        cur.execute("UPDATE settings SET knowledge_pdf_path='' WHERE id=1")
-        conn.commit()
-    conn.close()
-    return redirect(url_for("admin_dashboard"))
+
 
 @app.route("/admin/profile", methods=["POST"])
 def admin_profile():
@@ -320,25 +245,7 @@ def admin_profile():
 
     return redirect(url_for("admin_dashboard"))
 
-@app.route("/admin/settings", methods=["POST"])
-def admin_settings():
-    if not require_login():
-        return redirect(url_for("admin_login"))
-    
-    if "knowledge_pdf" in request.files:
-        f = request.files["knowledge_pdf"]
-        if f and f.filename:
-            filename = secure_filename(f.filename)
-            path = "uploads/" + filename
-            f.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-            
-            conn = get_db()
-            cur = conn.cursor()
-            cur.execute("UPDATE settings SET knowledge_pdf_path=? WHERE id=1", (path,))
-            conn.commit()
-            conn.close()
-            
-    return redirect(url_for("admin_dashboard"))
+
 
 @app.route("/admin/projects/add", methods=["POST"])
 def admin_projects_add():
@@ -548,120 +455,59 @@ def admin_skills_edit(sid):
     return render_template("edit_skill.html", skill=skill)
 
 
-@app.route("/chat", methods=["POST"])
-def chat():
-    print("--- Chat Request Received ---")
-    data = request.json
-    query = data.get("message", "")
-    print(f"Query: {query}")
-    if not query:
-        return jsonify({"response": "Please say something."})
-    
-    try:
-        response = get_rag_response(query)
-        print(f"Response generated: {response[:50]}...")
-        return jsonify({"response": response})
-    except Exception as e:
-        print(f"Error in chat route: {e}")
-        return jsonify({"response": "An error occurred."})
 
-def get_rag_response(query):
-    print("Step 1: Checking DB for PDF")
+@app.route("/admin/research/add", methods=["POST"])
+def admin_research_add():
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    title = request.form.get("title", "")
+    publication = request.form.get("publication", "")
+    date = request.form.get("date", "")
+    link = request.form.get("link", "")
+    description = request.form.get("description", "")
+    
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT knowledge_pdf_path FROM settings WHERE id=1")
-    row = cur.fetchone()
+    cur.execute("INSERT INTO research_papers (title, publication, date, link, description) VALUES (?, ?, ?, ?, ?)", (title, publication, date, link, description))
+    conn.commit()
     conn.close()
+    return redirect(url_for("admin_dashboard"))
 
-    if not row or not row[0]:
-        print("No PDF found in DB")
-        return "I don't have any knowledge base uploaded yet."
+@app.route("/admin/research/delete/<int:rid>", methods=["POST"])
+def admin_research_delete(rid):
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    conn = get_db()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM research_papers WHERE id=?", (rid,))
+    conn.commit()
+    conn.close()
+    return redirect(url_for("admin_dashboard"))
 
-    pdf_path = os.path.join(app.static_folder, row[0])
-    print(f"PDF Path: {pdf_path}")
-    if not os.path.exists(pdf_path):
-        print("PDF file missing on disk")
-        return "The knowledge base file seems to be missing."
-
-    text = ""
-    try:
-        print("Step 2: Reading PDF")
-        pdf_reader = PdfReader(pdf_path)
-        for page in pdf_reader.pages:
-            content = page.extract_text()
-            if content:
-                text += content
-        print(f"PDF Read complete. Length: {len(text)}")
-    except Exception as e:
-        print(f"Error reading PDF: {e}")
-        return f"Error reading PDF: {str(e)}"
-
-    print("Step 3: Splitting Text")
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=800,
-        chunk_overlap=100
-    )
-    chunks = text_splitter.split_text(text)
-    print(f"Chunks created: {len(chunks)}")
-
-    if not chunks:
-        return "The PDF seems to be empty."
-
-    print("Step 4: Generating Embeddings")
-    embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+@app.route("/admin/research/edit/<int:rid>", methods=["GET", "POST"])
+def admin_research_edit(rid):
+    if not require_login():
+        return redirect(url_for("admin_login"))
+    conn = get_db()
+    cur = conn.cursor()
     
-    print("Step 5: Creating Vector Store")
-    vectorstore = FAISS.from_texts(chunks, embedding=embeddings)
-    
-    print("Step 6: Similarity Search")
-    results = vectorstore.similarity_search(query, k=3)
-
-    if not results:
-        return "I couldn't find any relevant information in my knowledge base."
-
-    context_text = '\n'.join([r.page_content for r in results])
-    print("Step 7: Initializing LLM")
-
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
-
-    prompt = PromptTemplate(
-        input_variables=["text", "input"],
-        template="""
-You are Zaid's AI Assistant. Your job is to answer questions about Zaid based on his portfolio and resume.
-
-Use the following context to answer the user's question.
-Context: {text}
-
-Question: {input}
-Response:
-"""
-    )
-
-    chain = load_summarize_chain(
-        llm=llm,
-        chain_type="stuff",
-        prompt=prompt
-    )
-
-    docs = [Document(page_content=context_text)]
-    try:
-        print("Step 8: Running Chain")
-        answer = chain.run(input_documents=docs, input=query)
-        if "Response:" in answer:
-            answer = answer.split("Response:")[-1].strip()
-        print("Response generated successfully")
-        return answer
-    except Exception as e:
-        print(f"Error generating response: {e}")
-        return f"Error generating response: {str(e)}"
+    if request.method == "POST":
+        title = request.form.get("title", "")
+        publication = request.form.get("publication", "")
+        date = request.form.get("date", "")
+        link = request.form.get("link", "")
+        description = request.form.get("description", "")
+        
+        cur.execute("UPDATE research_papers SET title=?, publication=?, date=?, link=?, description=? WHERE id=?", (title, publication, date, link, description, rid))
+        conn.commit()
+        conn.close()
+        return redirect(url_for("admin_dashboard"))
+        
+    cur.execute("SELECT * FROM research_papers WHERE id=?", (rid,))
+    research_paper = cur.fetchone()
+    conn.close()
+    return render_template("edit_research.html", research=research_paper)
 
 if __name__ == "__main__":
     init_db()
-    conn = get_db()
-    cur = conn.cursor()
-    cur.execute("SELECT knowledge_pdf_path FROM settings WHERE id=1")
-    p = cur.fetchone()[0]
-    conn.close()
-    if p:
-        rag.build_from_pdf(os.path.join(BASE_DIR, p))
     app.run(host="127.0.0.1", port=5000, debug=True)

@@ -1,12 +1,10 @@
-Flask==3.0.0
-PyPDF2==3.0.1
-scikit-learn==1.5.2
+Flask
+PyPDF2
 langchain
-langchain-core
 langchain-community
+langchain-core
 langchain-google-genai
 langchain-text-splitters
 faiss-cpu
-sentence-transformers
 python-dotenv
 gunicorn

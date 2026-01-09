@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Research Paper</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <header class="admin-header">
+        <div class="container">
+            <h1>Edit Research Paper</h1>
+            <nav>
+                <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container">
+        <section class="card">
+            <form method="post">
+                <div class="grid-2">
+                    <div>
+                        <label>Title</label>
+                        <input type="text" name="title" value="{{ research['title'] }}" required>
+                    </div>
+                    <div>
+                        <label>Publication / Conference</label>
+                        <input type="text" name="publication" value="{{ research['publication'] }}">
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div>
+                        <label>Date</label>
+                        <input type="text" name="date" value="{{ research['date'] }}" required>
+                    </div>
+                    <div>
+                        <label>Link to Paper</label>
+                        <input type="url" name="link" value="{{ research['link'] }}">
+                    </div>
+                </div>
+                <label>Description</label>
+                <textarea name="description" rows="5">{{ research['description'] }}</textarea>
+                <button type="submit">Update Research Paper</button>
+            </form>
+        </section>
+    </main>
+</body>
+
+</html>

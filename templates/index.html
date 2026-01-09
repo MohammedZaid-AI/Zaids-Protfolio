@@ -200,6 +200,27 @@
             </ul>
         </section>
 
+        <section id="research" class="card research">
+            <h2 class="underline">Research Papers</h2>
+            <div class="grid">
+                {% for r in research_papers %}
+                <article class="project">
+                    <div class="content">
+                        <h3>{{ r['title'] }}</h3>
+                        <p class="muted" style="margin-bottom: 8px;">{{ r['publication'] }} • {{ r['date'] }}</p>
+                        <p>{{ r['description'] }}</p>
+                        {% if r['link'] %}
+                        <a class="button" href="{{ r['link'] }}" target="_blank" style="margin-top: 12px;">Read
+                            Paper</a>
+                        {% endif %}
+                    </div>
+                </article>
+                {% else %}
+                <p class="muted">No research papers yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
 
 
         <section id="contact" class="card contact">
@@ -305,36 +326,6 @@
         {% endif %}
     </div>
 
-    <div class="chat-widget">
-        <button class="chat-button" onclick="toggleChat()">
-            <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-            </svg>
-        </button>
-        <div class="chat-window" id="chatWindow">
-            <div class="chat-header">
-                <span>Ask Zaid's AI</span>
-                <button onclick="toggleChat()"
-                    style="background:none; border:none; color:white; cursor:pointer;">✕</button>
-            </div>
-            <div class="chat-messages" id="chatMessages">
-                <div class="message bot">Hi! I'm Zaid's AI assistant. Ask me anything about his work or experience!
-                </div>
-            </div>
-            <div class="chat-input-area">
-                <input type="text" id="chatInput" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
-                <button onclick="sendMessage()">
-                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
-                        stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
         const root = document.documentElement;
         const savedTheme = localStorage.getItem('theme') || 'dark';
@@ -350,53 +341,9 @@
                 localStorage.setItem('theme', next);
             });
         }
-
-        function toggleChat() {
-            const chatWindow = document.getElementById('chatWindow');
-            chatWindow.classList.toggle('open');
-        }
-
-        function handleKeyPress(event) {
-            if (event.key === 'Enter') {
-                sendMessage();
-            }
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('chatInput');
-            const messages = document.getElementById('chatMessages');
-            const text = input.value.trim();
-
-            if (!text) return;
-
-            // Add user message
-            messages.innerHTML += `<div class="message user">${text}</div>`;
-            input.value = '';
-            messages.scrollTop = messages.scrollHeight;
-
-            // Add loading state
-            const loadingId = 'loading-' + Date.now();
-            messages.innerHTML += `<div class="message bot" id="${loadingId}">Thinking...</div>`;
-            messages.scrollTop = messages.scrollHeight;
-
-            try {
-                const response = await fetch('/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ message: text })
-                });
-                const data = await response.json();
-
-                // Remove loading and add bot response
-                document.getElementById(loadingId).remove();
-                messages.innerHTML += `<div class="message bot">${data.response}</div>`;
-            } catch (error) {
-                document.getElementById(loadingId).remove();
-                messages.innerHTML += `<div class="message bot">Sorry, something went wrong.</div>`;
-            }
-            messages.scrollTop = messages.scrollHeight;
-        }
     </script>
+
+
 </body>
 
 </html>
