@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ error_title or 'Error' }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body style="display: flex; align-items: center; justify-content: center; min-height: 100vh; background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; margin: 0;">
+    <main class="container narrow" style="max-width: 600px; padding: 20px;">
+        <div class="card" style="border: 2px solid var(--accent); padding: 40px; border-radius: 12px; background: var(--card-bg); box-shadow: 0 8px 30px rgba(0,0,0,0.12);">
+            <div style="font-size: 3em; color: var(--accent); margin-bottom: 20px; font-weight: 800;">⚠️</div>
+            <h1 class="underline" style="margin-top: 0; font-size: 2em;">{{ error_title or 'Internal Server Error' }}</h1>
+            <p class="lead" style="color: var(--text-muted); font-size: 1.1em; line-height: 1.6; margin-bottom: 24px;">
+                {{ error_msg or 'Something went wrong on the server.' }}
+            </p>
+            {% if debug_info %}
+            <div style="background: rgba(0, 0, 0, 0.05); padding: 16px; border-radius: 6px; font-family: monospace; font-size: 0.9em; overflow-x: auto; max-height: 200px; margin-bottom: 24px; white-space: pre-wrap; text-align: left; border-left: 4px solid var(--accent);">
+                {{ debug_info }}
+            </div>
+            {% endif %}
+            <div style="display: flex; gap: 12px;">
+                <a href="{{ url_for('index') }}" class="button" style="margin: 0; text-decoration: none;">Go to Homepage</a>
+                <a href="javascript:history.back()" class="button" style="margin: 0; background: var(--muted); text-decoration: none;">Go Back</a>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

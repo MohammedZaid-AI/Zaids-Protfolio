@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portfolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <nav class="topnav">
+        <div class="container nav-inner">
+
+            <div class="nav-pill">
+                <a href="#about">About</a>
+                <a href="#projects">Projects</a>
+                <a href="#skills">Skills</a>
+                <a href="#experience">Experience</a>
+            </div>
+
+        </div>
+    </nav>
+    <header class="hero dark">
+        <div class="container hero-grid">
+            <div>
+                <div class="pretitle">{{ profile['name'] or 'Zaid' }}</div>
+                <p class="subtitle">{{ profile['tagline'] or 'Full Stack Developer' }}</p>
+                <h1 class="display">Hello, I'm {{ profile['name'] or 'Zaid' }}</h1>
+                <p class="lead">building products that dont suck</p>
+
+
+            </div>
+            <div class="avatar-wrap" onclick="this.classList.toggle('flipped')">
+                <div class="flipper">
+                    <div class="front">
+                        {% if profile['avatar_path'] %}
+                        <img class="avatar hero-avatar"
+                            src="{{ profile['avatar_path']|asset_url }}"
+                            alt="avatar">
+                        {% else %}
+                        <div class="avatar hero-avatar placeholder">
+                            {% if profile['name'] %}{{ profile['name'][0] }}{% else %}U{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="back">
+                        {% if profile['avatar_back_path'] %}
+                        <img class="avatar hero-avatar"
+                            src="{{ profile['avatar_back_path']|asset_url }}"
+                            alt="avatar">
+                        {% else %}
+                        <div class="avatar hero-avatar placeholder">
+                            {% if profile['name'] %}{{ profile['name'][0] }}{% else %}U{% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <style>
+                .avatar-wrap {
+                    perspective: 1000px;
+                    cursor: pointer;
+                }
+
+                .flipper {
+                    transition: 0.6s;
+                    transform-style: preserve-3d;
+                    position: relative;
+                    width: 220px;
+                    height: 220px;
+                }
+
+                .avatar-wrap.flipped .flipper {
+                    transform: rotateY(180deg);
+                }
+
+                .front,
+                .back {
+                    backface-visibility: hidden;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                }
+
+                .front {
+                    z-index: 2;
+                    transform: rotateY(0deg);
+                }
+
+                .back {
+                    transform: rotateY(180deg);
+                }
+
+                /* Ensure images fit the container */
+                .flipper .avatar {
+                    width: 100%;
+                    height: 100%;
+                }
+            </style>
+        </div>
+    </header>
+
+    <main class="container">
+        <section id="about" class="card about">
+            <h2 class="underline">About</h2>
+            <p class="muted">{{ profile['about'] or 'Share your story, skills, and goals.' }}</p>
+        </section>
+
+        <section id="skills" class="card skills">
+            <h2 class="underline">Skills</h2>
+            <div class="pill-row">
+                {% set ns = namespace(shown=false) %}
+                {% for s in skills %}
+                {% if s['exploring'] == 0 %}
+                <span class="pill">{{ s['name'] }}</span>
+                {% set ns.shown = true %}
+                {% endif %}
+                {% endfor %}
+                {% if not ns.shown %}
+                <span class="muted">No skills yet.</span>
+                {% endif %}
+            </div>
+            <h3 class="subhead">Figuring out</h3>
+            <div class="pill-row">
+                {% set ns2 = namespace(shown=false) %}
+                {% for s in skills %}
+                {% if s['exploring'] == 1 %}
+                <span class="pill">{{ s['name'] }}</span>
+                {% set ns2.shown = true %}
+                {% endif %}
+                {% endfor %}
+                {% if not ns2.shown %}
+                <span class="muted">Add technologies you’re exploring.</span>
+                {% endif %}
+            </div>
+        </section>
+
+        <section id="projects" class="card projects">
+            <h2 class="underline">Projects</h2>
+            <div class="grid">
+                {% for p in projects %}
+                <article class="project">
+                    {% if p['image_path'] %}
+                    <img src="{{ p['image_path']|asset_url }}"
+                        alt="{{ p['title'] }}">
+                    {% endif %}
+                    <div class="content">
+                        <h3>{{ p['title'] }}</h3>
+                        <p>{{ p['description'] }}</p>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            {% if p['link'] %}
+                            <a class="button" href="{{ p['link'] }}" target="_blank" style="margin-top: 0;">View</a>
+                            {% endif %}
+                            {% if p['github_link'] %}
+                            <a class="button" href="{{ p['github_link'] }}" target="_blank"
+                                style="background: #333; display: inline-flex; align-items: center; justify-content: center; padding: 8px 12px; margin-top: 0;">
+                                <svg viewBox="0 0 24 24" style="width: 20px; height: 20px; fill: white;">
+                                    <path
+                                        d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.11.79-.25.79-.55v-2.15c-3.22.7-3.9-1.39-3.9-1.39-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.04 1.78 2.74 1.26 3.4.96.11-.76.41-1.26.74-1.55-2.57-.29-5.27-1.29-5.27-5.76 0-1.27.46-2.31 1.21-3.13-.12-.3-.53-1.52.11-3.17 0 0 1-.32 3.28 1.19a11.4 11.4 0 0 1 5.97 0c2.28-1.51 3.28-1.19 3.28-1.19.64 1.65.23 2.87.11 3.17.75.82 1.21 1.86 1.21 3.13 0 4.48-2.71 5.46-5.29 5.75.42.37.79 1.1.79 2.23v3.31c0 .3.21.67.8.55A11.5 11.5 0 0 0 12 .5z" />
+                                </svg>
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </article>
+                {% else %}
+                <p class="muted">No projects yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section id="experience" class="card experience">
+            <h2 class="underline">Experience</h2>
+            <ul class="timeline">
+                {% for e in experience %}
+                <li>
+                    <div class="row">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            {% if e['logo_path'] %}
+                            <img src="{{ e['logo_path']|asset_url }}" alt="logo"
+                                style="width: 40px; height: 40px; border-radius: 6px; object-fit: cover;">
+                            {% endif %}
+                            <div>
+                                <strong>{{ e['role'] }}</strong>
+                                <span class="company">{{ e['company'] }}</span>
+                            </div>
+                        </div>
+                        <span class="dates">{{ e['start_date'] }}{% if e['end_date'] %} → {{ e['end_date'] }}{% endif
+                            %}</span>
+                    </div>
+                    <p>{{ e['description'] }}</p>
+                </li>
+                {% else %}
+                <p class="muted">No experience added yet.</p>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section id="research" class="card research">
+            <h2 class="underline">Research Papers</h2>
+            <div class="grid">
+                {% for r in research_papers %}
+                <article class="project">
+                    <div class="content">
+                        <h3>{{ r['title'] }}</h3>
+                        <p class="muted" style="margin-bottom: 8px;">{{ r['publication'] }} • {{ r['date'] }}</p>
+                        <p>{{ r['description'] }}</p>
+                        {% if r['link'] %}
+                        <a class="button" href="{{ r['link'] }}" target="_blank" style="margin-top: 12px;">Read
+                            Paper</a>
+                        {% endif %}
+                    </div>
+                </article>
+                {% else %}
+                <p class="muted">No research papers yet.</p>
+                {% endfor %}
+            </div>
+        </section>
+
+
+
+        <section id="contact" class="card contact">
+            <h2 class="underline">Contact Me</h2>
+            <form action="{{ url_for('contact') }}" method="POST">
+                <label>Name</label>
+                <input type="text" name="name" required placeholder="Your Name">
+                <label>Email</label>
+                <input type="email" name="email" placeholder="Your Email">
+                <label>Message</label>
+                <textarea name="message" rows="4" required placeholder="How can I help you?"></textarea>
+                <button type="submit" style="margin-top: 12px;">Send Message</button>
+            </form>
+        </section>
+    </main>
+
+
+    <div class="social-dock">
+        <a href="{{ url_for('index') }}" aria-label="Home">
+            <svg viewBox="0 0 24 24">
+                <path d="M3 10l9-7 9 7v11a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1v-5H9v5a1 1 0 0 1-1 1H3z" fill="currentColor" />
+            </svg>
+        </a>
+        <span class="divider"></span>
+        {% if profile['github'] %}
+        <a href="{{ profile['github'] }}" target="_blank" aria-label="GitHub">
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M12 .5a11.5 11.5 0 0 0-3.64 22.42c.58.11.79-.25.79-.55v-2.15c-3.22.7-3.9-1.39-3.9-1.39-.53-1.35-1.3-1.71-1.3-1.71-1.06-.72.08-.71.08-.71 1.17.08 1.79 1.2 1.79 1.2 1.04 1.78 2.74 1.26 3.4.96.11-.76.41-1.26.74-1.55-2.57-.29-5.27-1.29-5.27-5.76 0-1.27.46-2.31 1.21-3.13-.12-.3-.53-1.52.11-3.17 0 0 1-.32 3.28 1.19a11.4 11.4 0 0 1 5.97 0c2.28-1.51 3.28-1.19 3.28-1.19.64 1.65.23 2.87.11 3.17.75.82 1.21 1.86 1.21 3.13 0 4.48-2.71 5.46-5.29 5.75.42.37.79 1.1.79 2.23v3.31c0 .3.21.67.8.55A11.5 11.5 0 0 0 12 .5z"
+                    fill="currentColor" />
+            </svg>
+        </a>
+        {% endif %}
+        {% if profile['linkedin'] %}
+        <span class="divider"></span>
+        <a href="{{ profile['linkedin'] }}" target="_blank" aria-label="LinkedIn">
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M4.98 3.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM3 8.98h4v12H3zM9.5 8.98h3.83v1.64h.05c.53-.95 1.82-1.95 3.75-1.95 4 0 4.74 2.63 4.74 6.05v6.26h-4v-5.55c0-1.32-.02-3.02-1.84-3.02-1.84 0-2.12 1.44-2.12 2.93v5.64h-4v-12z"
+                    fill="currentColor" />
+            </svg>
+        </a>
+        {% endif %}
+        {% if profile['twitter'] %}
+        <span class="divider"></span>
+        <a href="{{ profile['twitter'] }}" target="_blank" aria-label="X">
+            <svg viewBox="0 0 24 24">
+                <path d="M17.7 3H21l-7.5 8.6L21.8 21h-3.3L13 13.7 8 21H3.8l7.9-9.2L4.3 3h3.3l4.6 6.7z"
+                    fill="currentColor" />
+            </svg>
+        </a>
+        {% endif %}
+        <span class="divider"></span>
+        <button id="themeToggle" aria-label="Toggle theme" style="position: relative; overflow: hidden;">
+            <!-- Sun Icon (Visible in Dark Mode) -->
+            <svg class="sun-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+                <circle cx="12" cy="12" r="5"></circle>
+                <line x1="12" y1="1" x2="12" y2="3"></line>
+                <line x1="12" y1="21" x2="12" y2="23"></line>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                <line x1="1" y1="12" x2="3" y2="12"></line>
+                <line x1="21" y1="12" x2="23" y2="12"></line>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+            </svg>
+            <!-- Moon Icon (Visible in Light Mode) -->
+            <svg class="moon-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor"
+                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); pointer-events: none;">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+        </button>
+        <style>
+            /* Default: Hide both */
+            #themeToggle .sun-icon,
+            #themeToggle .moon-icon {
+                opacity: 0;
+                transition: opacity 0.3s ease;
+            }
+
+            /* Dark Mode: Show Sun */
+            html[data-theme="dark"] #themeToggle .sun-icon {
+                opacity: 1;
+            }
+
+            /* Light Mode: Show Moon */
+            html[data-theme="light"] #themeToggle .moon-icon {
+                opacity: 1;
+            }
+        </style>
+        {% if profile['website'] %}
+        <span class="divider"></span>
+        <a href="{{ profile['website'] }}" target="_blank" aria-label="Website">
+            <svg viewBox="0 0 24 24">
+                <path
+                    d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2c1.7 0 3.26.52 4.56 1.41L9.41 12 12 14.59 18.59 8A8 8 0 1 1 12 4z"
+                    fill="currentColor" />
+            </svg>
+        </a>
+        {% endif %}
+    </div>
+
+    <script>
+        const root = document.documentElement;
+        const savedTheme = localStorage.getItem('theme') || 'dark';
+        root.setAttribute('data-theme', savedTheme);
+
+        const themeToggle = document.getElementById('themeToggle');
+
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const current = root.getAttribute('data-theme');
+                const next = current === 'dark' ? 'light' : 'dark';
+                root.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+            });
+        }
+    </script>
+
+
+</body>
+
+</html>
+```

@@ -1,0 +1,12 @@
+Flask
+PyPDF2
+langchain
+langchain-community
+langchain-core
+langchain-google-genai
+langchain-text-splitters
+faiss-cpu
+python-dotenv
+gunicorn
+psycopg2-binary
+vercel-blob

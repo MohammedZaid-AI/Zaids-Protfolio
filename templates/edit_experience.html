@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Experience</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+
+<body>
+    <header class="admin-header">
+        <div class="container">
+            <h1>Edit Experience</h1>
+            <nav>
+                <a href="{{ url_for('admin_dashboard') }}">Back to Dashboard</a>
+            </nav>
+        </div>
+    </header>
+    <main class="container narrow">
+        <section class="card">
+            <form method="post" enctype="multipart/form-data">
+                <div class="grid-2">
+                    <div>
+                        <label>Role</label>
+                        <input type="text" name="role" value="{{ experience['role'] }}" required>
+                    </div>
+                    <div>
+                        <label>Company</label>
+                        <input type="text" name="company" value="{{ experience['company'] }}" required>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div>
+                        <label>Start Date</label>
+                        <input type="text" name="start_date" value="{{ experience['start_date'] }}"
+                            placeholder="YYYY-MM">
+                    </div>
+                    <div>
+                        <label>End Date</label>
+                        <input type="text" name="end_date" value="{{ experience['end_date'] }}"
+                            placeholder="YYYY-MM or Present">
+                    </div>
+                </div>
+                <label>Logo (Leave empty to keep current)</label>
+                <input type="file" name="logo" accept="image/*">
+                {% if experience['logo_path'] %}
+                <p class="muted" style="font-size: 0.9em; margin-top: 4px;">Current: {{ experience['logo_path'] }}</p>
+                {% endif %}
+                <label>Description</label>
+                <textarea name="description" rows="3">{{ experience['description'] }}</textarea>
+                <button type="submit" style="margin-top: 16px;">Save Changes</button>
+            </form>
+        </section>
+    </main>
+</body>
+
+</html>
