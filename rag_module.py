@@ -21,6 +21,7 @@ class RAG:
             from langchain_text_splitters import RecursiveCharacterTextSplitter
             from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
             from langchain_community.vectorstores import FAISS
+            # pyrefly: ignore [missing-import]
             from langchain.chains import RetrievalQA
             
             self.PyPDFLoader = PyPDFLoader
